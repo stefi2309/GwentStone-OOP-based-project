@@ -1,11 +1,14 @@
 package org.poo.main;
 
+import lombok.Getter;
 import org.poo.fileio.CardInput;
 
-public class HeroCard extends Card{
-	public HeroCard(CardInput card) {
+@Getter
+public class HeroCard extends Card {
+	private final int healthHero = 30;
+	public HeroCard(final CardInput card) {
 		super(card);
-		card.setHealth(30);
+		card.setHealth(healthHero);
 	}
 
 }

@@ -2,15 +2,19 @@ package org.poo.main;
 
 import org.poo.fileio.CardInput;
 
-public class Ripper extends SpecialCard{
+public class Ripper extends SpecialCard {
 
-	public Ripper(CardInput card) {
+	public Ripper(final CardInput card) {
 		super(card);
 	}
 
-	public void ability(MinionCard enemyCard) {
+	/**
+	 *
+	 * @param enemyCard
+	 */
+	public void ability(final MinionCard enemyCard) {
 		int enemyAttack = enemyCard.getCard().getAttackDamage();
-		if(enemyAttack < 2) {
+		if (enemyAttack < 2) {
 			enemyCard.getCard().setAttackDamage(0);
 		} else {
 		enemyCard.getCard().setAttackDamage(enemyAttack - 2);

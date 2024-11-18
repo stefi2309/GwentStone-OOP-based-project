@@ -14,22 +14,37 @@ public class Player {
 	private final int maxMana = 10;
 	private int wonGames = 0;
 	private int nrGames = 0;
-	public Player(){ }
-	public Player(ArrayList<Deck> decks) {
+	public Player() { }
+	public Player(final ArrayList<Deck> decks) {
 		this.decks = decks;
 	}
 
-	public Deck getDeck(int index) {
+	/**
+	 *
+	 * @param index
+	 * @return
+	 */
+	public Deck getDeck(final int index) {
 		return decks.get(index);
 	}
-	public void refreshMana(int value) {
+
+	/**
+	 *
+	 * @param value
+	 */
+	public void refreshMana(final int value) {
 		if (value < maxMana) {
 			mana += value;
 		} else {
 			mana += maxMana;
 		}
 	}
-	public void useMana(int amount) {
+
+	/**
+	 *
+	 * @param amount
+	 */
+	public void useMana(final int amount) {
 		mana -= amount;
 	}
 

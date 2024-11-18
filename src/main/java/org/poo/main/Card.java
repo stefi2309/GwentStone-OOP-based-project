@@ -15,10 +15,10 @@ public abstract class Card {
 	/**
 	 * Creates a Card instance based on the specified CardInput.
 	 *
-	 * @param cardInfo The CardInput object containing all necessary card attributes.
-	 * @return A new instance of a subclass of Card, specific to the type defined in CardInput.
+	 * @param cardInfo The CardInput object containing all necessary card attributes
+	 * @return A new instance of a subclass of Card, specific to the type defined in CardInput
 	 */
-public static Card create(CardInput cardInfo){
+public static Card create(final CardInput cardInfo) {
 	return switch (cardInfo.getName()) {
 		case "Goliath" -> new Goliath(cardInfo);
 		case "Sentinel" -> new Sentinel(cardInfo);

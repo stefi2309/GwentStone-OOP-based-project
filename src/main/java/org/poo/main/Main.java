@@ -3,13 +3,9 @@ package org.poo.main;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.poo.checker.Checker;
 import org.poo.checker.CheckerConstants;
-import org.poo.fileio.ActionsInput;
-import org.poo.fileio.GameInput;
 import org.poo.fileio.Input;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
