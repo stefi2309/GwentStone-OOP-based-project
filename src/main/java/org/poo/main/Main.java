@@ -3,8 +3,11 @@ package org.poo.main;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.poo.checker.Checker;
 import org.poo.checker.CheckerConstants;
+import org.poo.fileio.ActionsInput;
+import org.poo.fileio.GameInput;
 import org.poo.fileio.Input;
 
 import java.io.File;
@@ -67,7 +70,6 @@ public final class Main {
                 Input.class);
 
         ArrayNode output = objectMapper.createArrayNode();
-
         /*
          * TODO Implement your function here
          *
@@ -86,8 +88,9 @@ public final class Main {
          * output.add(objectNode);
          *
          */
-
+        Game.getInstance().start(inputData, output);
         ObjectWriter objectWriter = objectMapper.writerWithDefaultPrettyPrinter();
         objectWriter.writeValue(new File(filePath2), output);
     }
+
 }
