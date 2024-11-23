@@ -8,6 +8,10 @@ import org.poo.fileio.CardInput;
 @Setter
 public abstract class Card {
 	protected CardInput card;
+	protected boolean frozen;
+	protected boolean attacked = false;
+	protected boolean tank = false;
+
 	public Card(final CardInput card) {
 		this.card = card;
 	}

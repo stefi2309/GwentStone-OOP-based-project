@@ -36,6 +36,16 @@ public class Table {
 	 * @return
 	 */
 	public Card getCard(final int row, final int col) {
+		if (row < 0 || row >= table.size()) {
+			System.out.println("Row index out of bounds.");
+			return null;  // Or handle error appropriately
+		}
+		ArrayList<Card> rowList = table.get(row);
+		if (col < 0 || col >= rowList.size()) {
+			System.out.println("Column index out of bounds.");
+			System.out.println("Row: " + row + " Col: " + col);
+			return null;  // Or handle error appropriately
+		}
 		return table.get(row).get(col);
 	}
 
@@ -73,7 +83,6 @@ public class Table {
 	}
 
 	/**
-	 *
 	 * @param playerId
 	 */
 	void addCardToHand(final int playerId) {
@@ -105,4 +114,35 @@ public class Table {
 	public boolean isRowFull(final int row) {
 		return table.get(row).size() >= MAX_CARDS_PER_ROW;
 	}
+
+	/**
+	 * Determines the owner of a given card.
+	 * @param card the card to check ownership for
+	 * @return the player ID (1 or 2) of the card's owner
+	 */
+	public int getOwner(Card card) {
+		for (int i = 0; i < table.size(); i++) {
+			if (table.get(i).contains(card)) {
+				if (i == FRONT_ROW_PLAYER1 || i == BACK_ROW_PLAYER1) {
+					return 1;
+				} else if (i == FRONT_ROW_PLAYER2 || i == BACK_ROW_PLAYER2) {
+					return 2;
+				}
+			}
+		}
+		return -1;  // Card not found
+	}
+	public void removeCardAt(int row, int col) {
+		try {
+			ArrayList<Card> rowList = table.get(row);
+			if (col >= 0 && col < rowList.size()) {
+				rowList.remove(col);
+			} else {
+				System.out.println("Column index out of bounds for removal.");
+			}
+		} catch (IndexOutOfBoundsException e) {
+			System.out.println("Row index out of bounds for removal.");
+		}
+	}
+
 }

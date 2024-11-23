@@ -4,10 +4,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.Getter;
 import lombok.Setter;
-import org.poo.fileio.ActionsInput;
-import org.poo.fileio.CardInput;
-import org.poo.fileio.GameInput;
-import org.poo.fileio.Input;
+import org.poo.fileio.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -149,6 +146,12 @@ public class Game {
 			case "getPlayerMana":
 				getPlayerMana(action);
 				break;
+			case "cardUsesAttack":
+				cardUsesAttack(action);
+				break;
+			case "getCardAtPosition":
+				getCardAtPosition(action);
+				break;
 			default:
 				break;
 		}
@@ -238,6 +241,7 @@ public class Game {
 		currentTurn = currentTurn == 1 ? 2 : 1;
 		if (bothPlayersEndedTurns()) {
 			startNewRound();
+			resetCardAttacks();
 		}
 	}
 
@@ -349,6 +353,140 @@ public class Game {
 		responseNode.put("command", "getPlayerMana");
 		responseNode.put("playerIdx", playerIndex);
 		responseNode.put("output", mana);
+	}
+
+	/**
+	 * Attempts to attack a card on the table with another card based on their coordinates.
+	 * @param action The action containing coordinates of the attacker and the target card.
+	 */
+	public void cardUsesAttack(ActionsInput action) {
+		Coordinates attackerCoords = action.getCardAttacker();
+		Coordinates attackedCoords = action.getCardAttacked();
+
+		Card attacker = table.getCard(attackerCoords.getX(), attackerCoords.getY());
+		Card attacked = table.getCard(attackedCoords.getX(), attackedCoords.getY());
+
+		if (attacker == null || attacked == null) {
+			appendError("Invalid card coordinates.");
+			return;
+		}
+
+		// Check if the cards belong to different players
+		if (!areEnemies(attacker, attacked)) {
+			String error = "Attacked card does not belong to the enemy.";
+			attackOutput(attackerCoords, attackedCoords, error);
+			return;
+		}
+
+		// Check if the attacker has already attacked this turn
+		if (attacker.isAttacked()) {
+			String error = "Attacker card has already attacked this turn.";
+			attackOutput(attackerCoords, attackedCoords, error);
+			return;
+		}
+
+		// Check if the attacker is frozen
+		if (attacker.isFrozen()) {
+			String error = "Attacker card is frozen.";
+			attackOutput(attackerCoords, attackedCoords, error);
+			return;
+		}
+
+		// Check for Tank card requirements if needed
+		if (mustTargetTank(attacker, attacked)) {
+			String error = "Attacked card is not of type 'Tank'.";
+			attackOutput(attackerCoords, attackedCoords, error);
+			return;
+		}
+
+		// Perform the attack
+		attackCard(attacker, attacked, attackedCoords);
+	}
+	private boolean mustTargetTank(Card attacker, Card attacked) {
+		int attackedPlayerId = table.getOwner(attacked);
+		ArrayList<Card> frontRow = table.getTable().get(attackedPlayerId == 1 ? Table.FRONT_ROW_PLAYER1 : Table.FRONT_ROW_PLAYER2);
+
+		boolean tankExists = false;
+		for (Card card : frontRow) {
+			if (card.isTank()) {
+				tankExists = true;
+				break;
+			}
+		}
+
+		return tankExists && !attacked.isTank();
+	}
+
+	private void attackOutput(Coordinates attackerCoords, Coordinates attackedCoords, String message) {
+		ObjectNode attackDetails = output.addObject();
+		attackDetails.put("command", "cardUsesAttack");
+		attackDetails.putObject("cardAttacker").put("x", attackerCoords.getX()).put("y", attackerCoords.getY());
+		attackDetails.putObject("cardAttacked").put("x", attackedCoords.getX()).put("y", attackedCoords.getY());
+		attackDetails.put("error", message);
+	}
+
+	private void appendError(String message) {
+		ObjectNode errorNode = output.addObject();
+		errorNode.put("error", message);
+	}
+
+	private boolean areEnemies(Card attacker, Card attacked) {
+		// Logic to determine if cards are enemies based on their positions or player ownership
+		return table.getOwner(attacker) != table.getOwner(attacked);
+	}
+
+	private void attackCard(Card attacker, Card attacked, Coordinates attackedCoords) {
+		// Calculate the new health after attack
+		int newHealth = attacked.getCard().getHealth() - attacker.getCard().getAttackDamage();
+		attacked.getCard().setHealth(newHealth);
+
+		// Check if the attacked card is destroyed
+		if (newHealth <= 0) {
+			table.removeCardAt(attackedCoords.getX(), attackedCoords.getY());  // Elimină cartea folosind coordonatele
+		}
+
+		// Mark the attacker as having attacked this turn
+		attacker.setAttacked(true);
+	}
+	private void resetCardAttacks() {
+		// Iterate through all rows and reset attack status of each card
+		for (ArrayList<Card> row : table.getTable()) {
+			for (Card card : row) {
+				card.setAttacked(false);  // Set the attack status to false for the new round
+			}
+		}
+	}
+
+	/**
+	 * Retrieves card details at the specified table position, conforming to the specified JSON output.
+	 * @param action The action input containing the coordinates for the card retrieval.
+	 */
+	private void getCardAtPosition(ActionsInput action) {
+		int x = action.getX(); // Retrieve the X coordinate from the action
+		int y = action.getY(); // Retrieve the Y coordinate from the action
+
+		Card card = table.getCard(x, y);
+		ObjectNode cardDetails = output.addObject();
+		cardDetails.put("command", "getCardAtPosition");
+		cardDetails.put("x", x);
+		cardDetails.put("y", y);
+
+		if (card == null) {
+			// When no card is found at the position, return a specific error message
+			cardDetails.put("output", "No card available at that position.");
+		} else {
+			// If a card is found, return the detailed information of the card
+			ObjectNode details = cardDetails.putObject("output");
+			details.put("mana", card.getCard().getMana());
+			details.put("attackDamage", card.getCard().getAttackDamage());
+			details.put("health", card.getCard().getHealth());
+			details.put("description", card.getCard().getDescription());
+			ArrayNode colorsArray = details.putArray("colors");
+			for (String color : card.getCard().getColors()) {
+				colorsArray.add(color);
+			}
+			details.put("name", card.getCard().getName());
+		}
 	}
 
 

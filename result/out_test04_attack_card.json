@@ -36,24 +36,10 @@
   "output" : 2
 }, {
   "command" : "getCardsOnTable",
-  "output" : [ [ {
-    "mana" : 1,
-    "attackDamage" : 3,
-    "health" : 2,
-    "description" : "Premium card: Fear him. Your last breath is now.",
-    "colors" : [ "Red", "Blue", "Pink" ],
-    "name" : "Berserker"
-  } ], [ {
-    "mana" : 2,
-    "attackDamage" : 2,
-    "health" : 5,
-    "description" : "Premium card: You shall not pass, you shall not prevail, you shall perish.",
-    "colors" : [ "Black", "White", "Green" ],
-    "name" : "Warden"
-  } ], [ {
+  "output" : [ [ ], [ ], [ {
     "mana" : 3,
     "attackDamage" : 3,
-    "health" : 5,
+    "health" : 3,
     "description" : "Premium card: You shall not pass, you shall not prevail, you shall perish.",
     "colors" : [ "Black", "White", "Green" ],
     "name" : "Warden"
