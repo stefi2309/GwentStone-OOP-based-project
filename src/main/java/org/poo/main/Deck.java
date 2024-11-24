@@ -20,13 +20,6 @@ public class Deck {
 	}
 
 	/**
-	 * @param card The Card object to be added to the deck
-	 */
-	public void addCard(final Card card) {
-		cards.add(card);
-	}
-
-	/**
 	 * @return The top card from the deck if the deck is not empty, null otherwise
 	 */
 	public Card drawCard() {
@@ -34,14 +27,6 @@ public class Deck {
 			return cards.remove(0);
 		}
 		return null;
-	}
-
-	/**
-	 *
-	 * @return The size of the deck as an integer
-	 */
-	public int getDeckSize() {
-		return cards.size();
 	}
 
 	/**

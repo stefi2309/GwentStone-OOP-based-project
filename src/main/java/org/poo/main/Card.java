@@ -8,7 +8,7 @@ import org.poo.fileio.CardInput;
 @Setter
 public abstract class Card {
 	protected CardInput card;
-	protected boolean frozen;
+	protected boolean frozen = false;
 	protected boolean attacked = false;
 	protected boolean tank = false;
 
@@ -35,7 +35,9 @@ public static Card create(final CardInput cardInfo) {
 		case "Empress Thorina" -> new EmpressThorina(cardInfo);
 		case "King Mudface" -> new KingMudface(cardInfo);
 		case "General Kocioraw" -> new GeneralKocioraw(cardInfo);
-		default -> new Ripper(cardInfo);
+		case "The Ripper" -> new Ripper(cardInfo);
+		default -> throw new IllegalStateException("Unhandled card type: "
+				+ cardInfo.getName());
 	};
 }
 

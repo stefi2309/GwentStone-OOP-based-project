@@ -4,8 +4,11 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.Getter;
 import lombok.Setter;
-import org.poo.fileio.*;
-
+import org.poo.fileio.ActionsInput;
+import org.poo.fileio.CardInput;
+import org.poo.fileio.GameInput;
+import org.poo.fileio.Input;
+import org.poo.fileio.Coordinates;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
@@ -27,6 +30,9 @@ public class Game {
 	private int currentTurn;
 	private int endTurnCounter = 0;
 	private int roundCounter = 1;
+	private boolean gameOver = false;
+	private int player1Wins = 0;
+	private int player2Wins = 0;
 
 	public Game(final Deck playerOneDeck, final Deck playerTwoDeck) {
 		this.playerOneDeck = playerOneDeck;
@@ -59,8 +65,7 @@ public class Game {
 		for (int i = 0; i < nrGames; i++) {
 			GameInput currentGame = input.getGames().get(i);
 			setupGame(currentGame);
-
-			//currentTurn = currentGame.getStartGame().getStartingPlayer();
+			gameOver = false;
 			CardInput hero1 = currentGame.getStartGame().getPlayerOneHero();
 			CardInput hero2 = currentGame.getStartGame().getPlayerTwoHero();
 			setupPlayers(currentGame, hero1, hero2);
@@ -103,7 +108,6 @@ public class Game {
 		table.setHero1(new HeroCard(hero1));
 		table.setHero2(new HeroCard(hero2));
 
-		// These calls are now safe to perform after shuffling
 		table.addCardToHand(1);
 		table.addCardToHand(2);
 		player1.setMana(1);
@@ -151,6 +155,27 @@ public class Game {
 				break;
 			case "getCardAtPosition":
 				getCardAtPosition(action);
+				break;
+			case "cardUsesAbility":
+				cardUsesAbility(action);
+				break;
+			case "useAttackHero":
+				useAttackHero(action);
+				break;
+			case "useHeroAbility":
+				useHeroAbility(action);
+				break;
+			case "getFrozenCardsOnTable":
+				getFrozenCardsOnTable(action);
+				break;
+			case "getPlayerOneWins":
+				getPlayerOneWins();
+				break;
+			case "getPlayerTwoWins":
+				getPlayerTwoWins();
+				break;
+			case "getTotalGamesPlayed":
+				getTotalGamesPlayed();
 				break;
 			default:
 				break;
@@ -238,12 +263,30 @@ public class Game {
 	 */
 	public void endPlayerTurn() {
 		// player turn
+		unfreezePlayerCards(currentTurn);
 		currentTurn = currentTurn == 1 ? 2 : 1;
 		if (bothPlayersEndedTurns()) {
 			startNewRound();
 			resetCardAttacks();
 		}
 	}
+
+	private void unfreezePlayerCards(final int playerID) {
+		int startRow = playerID == 1 ? Table.FRONT_ROW_PLAYER1 : Table.FRONT_ROW_PLAYER2;
+		int endRow = playerID == 1 ? Table.BACK_ROW_PLAYER1 : Table.BACK_ROW_PLAYER2;
+
+		// unfreeze cards in both the front and back rows for the player
+		unfreezeCardsInRow(startRow);
+		unfreezeCardsInRow(endRow);
+	}
+
+	private void unfreezeCardsInRow(final int row) {
+		ArrayList<Card> cards = table.getTable().get(row);
+		for (Card card : cards) {
+			card.setFrozen(false);
+		}
+	}
+
 
 	private boolean bothPlayersEndedTurns() {
 		endTurnCounter++;
@@ -256,17 +299,16 @@ public class Game {
 
 	private void startNewRound() {
 		roundCounter++;
-		// Refresh mana for both players and draw new cards to hand
+
 		player1.refreshMana(roundCounter);
 		player2.refreshMana(roundCounter);
 
 		table.addCardToHand(1);
 		table.addCardToHand(2);
-
 	}
 
+
 	/**
-	 * Attempts to place a card from the player's hand onto the table based on the hand index
 	 * @param handIdx the index of the card in the player's hand that they intend to play
 	 */
 	public void placeCard(final int handIdx) {
@@ -274,7 +316,7 @@ public class Game {
 				: table.getPlayer2Hand();
 		Player currentPlayer = currentTurn == 1 ? player1 : player2;
 
-		// Check mana
+		// check mana
 		if (handIdx >= currentHand.size() || currentPlayer.getMana()
 				< currentHand.get(handIdx).getCard().getMana()) {
 			ObjectNode responseNode = output.addObject();
@@ -284,7 +326,7 @@ public class Game {
 			return;
 		}
 
-		// Determine the appropriate row
+		// determine the appropriate row
 		Card cardToPlace = currentHand.get(handIdx);
 		int row = determineRow(cardToPlace);
 		if (table.isRowFull(row)) {
@@ -295,7 +337,7 @@ public class Game {
 			return;
 		}
 
-		// Remove the card from hand and place it on the table
+		// remove the card from hand and place it on the table
 		currentHand.remove(handIdx);
 		table.addCard(currentTurn, cardToPlace);
 		currentPlayer.useMana(cardToPlace.getCard().getMana());
@@ -318,11 +360,9 @@ public class Game {
 		ObjectNode responseNode = output.addObject();
 		responseNode.put("command", "getCardsOnTable");
 
-		// Create the main output array node for all rows
 		ArrayNode rowsArray = responseNode.putArray("output");
 
 		for (ArrayList<Card> row : table.getTable()) {
-			// Create an array node for each row to store card details
 			ArrayNode rowArray = rowsArray.addArray();
 
 			for (Card card : row) {
@@ -341,14 +381,14 @@ public class Game {
 	}
 
 	/**
-	 * @param action The action input containing details such as which player's mana to retrieve
+	 * @param action containing details
 	 */
 	public void getPlayerMana(final ActionsInput action) {
 		int playerIndex = action.getPlayerIdx();
 
 		int mana = (playerIndex == 1) ? player1.getMana() : player2.getMana();
 
-		// Create the output object node for this command
+		// create the output object node for this command
 		ObjectNode responseNode = output.addObject();
 		responseNode.put("command", "getPlayerMana");
 		responseNode.put("playerIdx", playerIndex);
@@ -356,10 +396,9 @@ public class Game {
 	}
 
 	/**
-	 * Attempts to attack a card on the table with another card based on their coordinates.
-	 * @param action The action containing coordinates of the attacker and the target card.
+	 * @param action containing coordinates of the attacker and the attacked
 	 */
-	public void cardUsesAttack(ActionsInput action) {
+	public void cardUsesAttack(final ActionsInput action) {
 		Coordinates attackerCoords = action.getCardAttacker();
 		Coordinates attackedCoords = action.getCardAttacked();
 
@@ -371,40 +410,37 @@ public class Game {
 			return;
 		}
 
-		// Check if the cards belong to different players
 		if (!areEnemies(attacker, attacked)) {
 			String error = "Attacked card does not belong to the enemy.";
 			attackOutput(attackerCoords, attackedCoords, error);
 			return;
 		}
 
-		// Check if the attacker has already attacked this turn
 		if (attacker.isAttacked()) {
 			String error = "Attacker card has already attacked this turn.";
 			attackOutput(attackerCoords, attackedCoords, error);
 			return;
 		}
 
-		// Check if the attacker is frozen
 		if (attacker.isFrozen()) {
 			String error = "Attacker card is frozen.";
 			attackOutput(attackerCoords, attackedCoords, error);
 			return;
 		}
 
-		// Check for Tank card requirements if needed
-		if (mustTargetTank(attacker, attacked)) {
+		if (mustTargetTank(attacked)) {
 			String error = "Attacked card is not of type 'Tank'.";
 			attackOutput(attackerCoords, attackedCoords, error);
 			return;
 		}
 
-		// Perform the attack
 		attackCard(attacker, attacked, attackedCoords);
 	}
-	private boolean mustTargetTank(Card attacker, Card attacked) {
+
+	private boolean mustTargetTank(final Card attacked) {
 		int attackedPlayerId = table.getOwner(attacked);
-		ArrayList<Card> frontRow = table.getTable().get(attackedPlayerId == 1 ? Table.FRONT_ROW_PLAYER1 : Table.FRONT_ROW_PLAYER2);
+		ArrayList<Card> frontRow = table.getTable().get(attackedPlayerId == 1
+				? Table.FRONT_ROW_PLAYER1 : Table.FRONT_ROW_PLAYER2);
 
 		boolean tankExists = false;
 		for (Card card : frontRow) {
@@ -417,53 +453,59 @@ public class Game {
 		return tankExists && !attacked.isTank();
 	}
 
-	private void attackOutput(Coordinates attackerCoords, Coordinates attackedCoords, String message) {
+	private void attackOutput(final Coordinates attackerCoords,
+							  final Coordinates attackedCoords,
+							  final String message) {
 		ObjectNode attackDetails = output.addObject();
 		attackDetails.put("command", "cardUsesAttack");
-		attackDetails.putObject("cardAttacker").put("x", attackerCoords.getX()).put("y", attackerCoords.getY());
-		attackDetails.putObject("cardAttacked").put("x", attackedCoords.getX()).put("y", attackedCoords.getY());
+		attackDetails.putObject("cardAttacker").put("x",
+				attackerCoords.getX()).put("y", attackerCoords.getY());
+		attackDetails.putObject("cardAttacked").put("x",
+				attackedCoords.getX()).put("y", attackedCoords.getY());
 		attackDetails.put("error", message);
 	}
 
-	private void appendError(String message) {
+	private void appendError(final String message) {
 		ObjectNode errorNode = output.addObject();
 		errorNode.put("error", message);
 	}
 
-	private boolean areEnemies(Card attacker, Card attacked) {
-		// Logic to determine if cards are enemies based on their positions or player ownership
+	private boolean areEnemies(final Card attacker, final Card attacked) {
+		// cards are enemies based on player ownership
 		return table.getOwner(attacker) != table.getOwner(attacked);
 	}
 
-	private void attackCard(Card attacker, Card attacked, Coordinates attackedCoords) {
-		// Calculate the new health after attack
-		int newHealth = attacked.getCard().getHealth() - attacker.getCard().getAttackDamage();
+	private void attackCard(final Card attacker,
+							final Card attacked,
+							final Coordinates attackedCoords) {
+		int attackedHealth = attacked.getCard().getHealth();
+		int attackerDamage = attacker.getCard().getAttackDamage();
+		int newHealth = attackedHealth - attackerDamage;
 		attacked.getCard().setHealth(newHealth);
 
-		// Check if the attacked card is destroyed
+		// check if the attacked card is destroyed
 		if (newHealth <= 0) {
-			table.removeCardAt(attackedCoords.getX(), attackedCoords.getY());  // Elimină cartea folosind coordonatele
+			table.removeCardAt(attackedCoords.getX(), attackedCoords.getY());
 		}
 
-		// Mark the attacker as having attacked this turn
 		attacker.setAttacked(true);
 	}
 	private void resetCardAttacks() {
-		// Iterate through all rows and reset attack status of each card
 		for (ArrayList<Card> row : table.getTable()) {
 			for (Card card : row) {
-				card.setAttacked(false);  // Set the attack status to false for the new round
+				card.setAttacked(false);
+				table.getHero1().setAttacked(false);
+				table.getHero2().setAttacked(false);
 			}
 		}
 	}
 
 	/**
-	 * Retrieves card details at the specified table position, conforming to the specified JSON output.
-	 * @param action The action input containing the coordinates for the card retrieval.
+	 * @param action containing the coordinates
 	 */
-	private void getCardAtPosition(ActionsInput action) {
-		int x = action.getX(); // Retrieve the X coordinate from the action
-		int y = action.getY(); // Retrieve the Y coordinate from the action
+	private void getCardAtPosition(final ActionsInput action) {
+		int x = action.getX();
+		int y = action.getY();
 
 		Card card = table.getCard(x, y);
 		ObjectNode cardDetails = output.addObject();
@@ -472,10 +514,8 @@ public class Game {
 		cardDetails.put("y", y);
 
 		if (card == null) {
-			// When no card is found at the position, return a specific error message
 			cardDetails.put("output", "No card available at that position.");
 		} else {
-			// If a card is found, return the detailed information of the card
 			ObjectNode details = cardDetails.putObject("output");
 			details.put("mana", card.getCard().getMana());
 			details.put("attackDamage", card.getCard().getAttackDamage());
@@ -489,6 +529,282 @@ public class Game {
 		}
 	}
 
+	/**
+	 * @param action The action containing coordinates of the cards
+	 */
+	public void cardUsesAbility(final ActionsInput action) {
+		Coordinates attackerCoords = action.getCardAttacker();
+		Coordinates attackedCoords = action.getCardAttacked();
 
+		Card attacker = table.getCard(attackerCoords.getX(), attackerCoords.getY());
+		Card attacked = table.getCard(attackedCoords.getX(), attackedCoords.getY());
+
+		if (attacker == null || attacked == null) {
+			appendError("Invalid card coordinates.");
+			return;
+		}
+
+		if (attacker.isFrozen()) {
+			String error = "Attacker card is frozen.";
+			abilityOutput(attackerCoords, attackedCoords, error);
+			return;
+		}
+
+		if (attacker.isAttacked()) {
+			String error = "Attacker card has already attacked this turn.";
+			abilityOutput(attackerCoords, attackedCoords, error);
+			return;
+		}
+
+		if (attacker.getCard().getName().equals("Disciple")
+				&& areEnemies(attacker, attacked)) {
+			String error = "Attacked card does not belong to the current player.";
+			abilityOutput(attackerCoords, attackedCoords, error);
+			return;
+		}
+
+		if ((attacker.getCard().getName().equals("The Ripper")
+				|| attacker.getCard().getName().equals("Miraj")
+				|| attacker.getCard().getName().equals("The Cursed One"))
+				&& !areEnemies(attacker, attacked)) {
+			String error = "Attacked card does not belong to the enemy.";
+			abilityOutput(attackerCoords, attackedCoords, error);
+			return;
+		}
+
+		if (!attacker.getCard().getName().equals("Disciple") && mustTargetTank(attacked)) {
+			String error = "Attacked card is not of type 'Tank'.";
+			abilityOutput(attackerCoords, attackedCoords, error);
+			return;
+		}
+
+		useAbility(attacker, attacked);
+		attacker.setAttacked(true);
+	}
+
+	private void abilityOutput(final Coordinates attackerCoords,
+							   final Coordinates attackedCoords,
+							   final String message) {
+		ObjectNode abilityDetails = output.addObject();
+		abilityDetails.put("command", "cardUsesAbility");
+		abilityDetails.putObject("cardAttacker").put("x",
+				attackerCoords.getX()).put("y", attackerCoords.getY());
+		abilityDetails.putObject("cardAttacked").put("x",
+				attackedCoords.getX()).put("y", attackedCoords.getY());
+		abilityDetails.put("error", message);
+	}
+
+	private void useAbility(final Card attacker, final Card attacked) {
+        switch (attacker.getCard().getName()) {
+            case "The Ripper" -> ((Ripper) attacker).ability((MinionCard) attacked);
+            case "Miraj" -> ((Miraj) attacker).ability((MinionCard) attacker,
+					(MinionCard) attacked);
+            case "The Cursed One" -> ((CursedOne) attacker).ability((MinionCard) attacked, table);
+            case "Disciple" -> ((Disciple) attacker).ability((MinionCard) attacked);
+            default -> throw new IllegalStateException("Unhandled card type: "
+					+ attacker.getCard().getName());
+        }
+	}
+
+	/**
+	 * @param action containing coordinates of the attacker card
+	 */
+	public void useAttackHero(final ActionsInput action) {
+		Coordinates attackerCoords = action.getCardAttacker();
+
+		Card attacker = table.getCard(attackerCoords.getX(), attackerCoords.getY());
+		HeroCard attackedHero = currentTurn == 1 ? table.getHero2() : table.getHero1();
+
+		if (attacker == null) {
+			appendError("Invalid card coordinates.");
+			return;
+		}
+
+		if (attacker.isFrozen()) {
+			String error = "Attacker card is frozen.";
+			attackHeroOutput(attackerCoords, error);
+			return;
+		}
+
+		if (attacker.isAttacked()) {
+			String error = "Attacker card has already attacked this turn.";
+			attackHeroOutput(attackerCoords, error);
+			return;
+		}
+
+		if (mustTargetTankBeforeHero()) {
+			String error = "Attacked card is not of type 'Tank'.";
+			attackHeroOutput(attackerCoords, error);
+			return;
+		}
+
+		attackHero(attacker, attackedHero);
+	}
+
+	private void attackHero(final Card attacker, final HeroCard attackedHero) {
+		int attackDamage = attacker.getCard().getAttackDamage();
+		int newHealth = attackedHero.getCard().getHealth() - attackDamage;
+		attackedHero.getCard().setHealth(newHealth);
+
+		// check if the hero is defeated
+		if (newHealth <= 0) {
+			String winnerMessage = currentTurn == 1
+					? "Player one killed the enemy hero."
+					: "Player two killed the enemy hero.";
+			endGame(winnerMessage);
+			return;
+		}
+		attacker.setAttacked(true);
+	}
+
+	private void attackHeroOutput(final Coordinates attackerCoords, final String error) {
+		ObjectNode attackDetails = output.addObject();
+		attackDetails.put("command", "useAttackHero");
+		attackDetails.putObject("cardAttacker").put("x",
+				attackerCoords.getX()).put("y", attackerCoords.getY());
+		attackDetails.put("error", error);
+	}
+
+	private boolean mustTargetTankBeforeHero() {
+		int enemyPlayerId = currentTurn == 1 ? 2 : 1;
+		ArrayList<Card> frontRow = table.getTable().get(enemyPlayerId == 1
+				? Table.FRONT_ROW_PLAYER1 : Table.FRONT_ROW_PLAYER2);
+
+		return frontRow.stream().anyMatch(Card::isTank);
+	}
+
+	private void endGame(final String message) {
+		ObjectNode gameEndDetails = output.addObject();
+		gameEndDetails.put("gameEnded", message);
+
+		gameOver = true;
+		if (currentTurn == 1) {
+			player1Wins++;
+		} else {
+			player2Wins++;
+		}
+	}
+
+	/**
+	 * @param action containing affected row
+	 */
+	public void useHeroAbility(final ActionsInput action) {
+		int affectedRow = action.getAffectedRow();
+		HeroCard hero = currentTurn == 1
+				? table.getHero1() : table.getHero2();
+		ArrayList<Card> affectedCardsRow = table.getTable().get(affectedRow);
+
+		if (hero.getCard().getMana() > (currentTurn == 1
+				? player1.getMana() : player2.getMana())) {
+			String error = "Not enough mana to use hero's ability.";
+			abilityError(error, affectedRow);
+			return;
+		}
+
+		if (hero.isAttacked()) {
+			String error = "Hero has already attacked this turn.";
+			abilityError(error, affectedRow);
+			return;
+		}
+
+		if ((hero.getCard().getName().equals("Lord Royce")
+				|| hero.getCard().getName().equals("Empress Thorina"))
+				&& !isEnemyRow(currentTurn, affectedRow)) {
+			String error = "Selected row does not belong to the enemy.";
+			abilityError(error, affectedRow);
+			return;
+		}
+
+		if ((hero.getCard().getName().equals("General Kocioraw")
+				|| hero.getCard().getName().equals("King Mudface"))
+				&& !isAllyRow(currentTurn, affectedRow)) {
+			String error = "Selected row does not belong to the current player.";
+			abilityError(error, affectedRow);
+			return;
+		}
+
+		hero.ability(affectedCardsRow);
+		hero.setAttacked(true);
+
+		if (currentTurn == 1) {
+			player1.useMana(hero.getCard().getMana());
+		} else {
+			player2.useMana(hero.getCard().getMana());
+		}
+	}
+
+
+	private void abilityError(final String error, final int affectedRow) {
+		ObjectNode abilityDetails = output.addObject();
+		abilityDetails.put("command", "useHeroAbility");
+		abilityDetails.put("affectedRow", affectedRow);
+		abilityDetails.put("error", error);
+	}
+
+	private boolean isEnemyRow(final int turn, final int affectedRow) {
+		return (turn == 1 && (affectedRow == Table.FRONT_ROW_PLAYER2
+				|| affectedRow == Table.BACK_ROW_PLAYER2))
+				|| (turn == 2 && (affectedRow == Table.FRONT_ROW_PLAYER1
+				|| affectedRow == Table.BACK_ROW_PLAYER1));
+	}
+
+	private boolean isAllyRow(final int turn, final int affectedRow) {
+		return (turn == 1 && (affectedRow == Table.FRONT_ROW_PLAYER1
+				|| affectedRow == Table.BACK_ROW_PLAYER1))
+				|| (turn == 2 && (affectedRow == Table.FRONT_ROW_PLAYER2
+				|| affectedRow == Table.BACK_ROW_PLAYER2));
+	}
+
+	private void getFrozenCardsOnTable(final ActionsInput action) {
+		ObjectNode responseNode = output.addObject();
+		responseNode.put("command", action.getCommand());
+
+		ArrayNode frozenCardsNode = responseNode.putArray("output");
+		for (ArrayList<Card> row : table.getTable()) {
+			for (Card card : row) {
+				if (card.isFrozen()) {
+					ObjectNode cardNode = frozenCardsNode.addObject();
+					cardNode.put("mana", card.getCard().getMana());
+					cardNode.put("attackDamage",
+							card.getCard().getAttackDamage());
+					cardNode.put("health", card.getCard().getHealth());
+					cardNode.put("description",
+							card.getCard().getDescription());
+					ArrayNode colorsArray = cardNode.putArray("colors");
+					for (String color : card.getCard().getColors()) {
+						colorsArray.add(color);
+					}
+					cardNode.put("name", card.getCard().getName());
+				}
+			}
+		}
+	}
+
+	/**
+	 * get how many times player1 won
+	 */
+	public void getPlayerOneWins() {
+		ObjectNode responseNode = output.addObject();
+		responseNode.put("command", "getPlayerOneWins");
+		responseNode.put("output", player1Wins);
+	}
+
+	/**
+	 * get how many times player2 won
+	 */
+	public void getPlayerTwoWins() {
+		ObjectNode responseNode = output.addObject();
+		responseNode.put("command", "getPlayerTwoWins");
+		responseNode.put("output", player2Wins);
+	}
+
+	/**
+	 * get how many games are
+	 */
+	public void getTotalGamesPlayed() {
+		ObjectNode responseNode = output.addObject();
+		responseNode.put("command", "getTotalGamesPlayed");
+		responseNode.put("output", nrGames);
+	}
 
 }

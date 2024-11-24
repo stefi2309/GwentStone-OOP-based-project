@@ -5,6 +5,7 @@ import org.poo.fileio.CardInput;
 public class CursedOne extends SpecialCard {
 	public CursedOne(final CardInput card) {
 		super(card);
+		card.setAttackDamage(0);
 	}
 
 	/**

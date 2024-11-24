@@ -37,14 +37,11 @@ public class Table {
 	 */
 	public Card getCard(final int row, final int col) {
 		if (row < 0 || row >= table.size()) {
-			System.out.println("Row index out of bounds.");
-			return null;  // Or handle error appropriately
+			return null;
 		}
 		ArrayList<Card> rowList = table.get(row);
 		if (col < 0 || col >= rowList.size()) {
-			System.out.println("Column index out of bounds.");
-			System.out.println("Row: " + row + " Col: " + col);
-			return null;  // Or handle error appropriately
+			return null;
 		}
 		return table.get(row).get(col);
 	}
@@ -60,24 +57,24 @@ public class Table {
 					|| "Miraj".equals(card.getCard().getName())
 					|| "Goliath".equals(card.getCard().getName())
 					|| "Warden".equals(card.getCard().getName())) {
-				table.get(FRONT_ROW_PLAYER1).add(card);  // Front row for player 1
+				table.get(FRONT_ROW_PLAYER1).add(card);
 			} else if ("The Cursed One".equals(card.getCard().getName())
 					|| "Disciple".equals(card.getCard().getName())
 					|| "Sentinel".equals(card.getCard().getName())
 					|| "Berserker".equals(card.getCard().getName())) {
-				table.get(BACK_ROW_PLAYER1).add(card);  // Back row for player 1
+				table.get(BACK_ROW_PLAYER1).add(card);
 			}
 		} else if (playerId == 2) {
 			if ("The Ripper".equals(card.getCard().getName())
 					|| "Miraj".equals(card.getCard().getName())
 					|| "Goliath".equals(card.getCard().getName())
 					|| "Warden".equals(card.getCard().getName())) {
-				table.get(FRONT_ROW_PLAYER2).add(card);  // Front row for player 2
+				table.get(FRONT_ROW_PLAYER2).add(card);
 			} else if ("The Cursed One".equals(card.getCard().getName())
 					|| "Disciple".equals(card.getCard().getName())
 					|| "Sentinel".equals(card.getCard().getName())
 					|| "Berserker".equals(card.getCard().getName())) {
-				table.get(BACK_ROW_PLAYER2).add(card);  // Back row for player 2
+				table.get(BACK_ROW_PLAYER2).add(card);
 			}
 		}
 	}
@@ -120,7 +117,7 @@ public class Table {
 	 * @param card the card to check ownership for
 	 * @return the player ID (1 or 2) of the card's owner
 	 */
-	public int getOwner(Card card) {
+	public int getOwner(final Card card) {
 		for (int i = 0; i < table.size(); i++) {
 			if (table.get(i).contains(card)) {
 				if (i == FRONT_ROW_PLAYER1 || i == BACK_ROW_PLAYER1) {
@@ -130,9 +127,15 @@ public class Table {
 				}
 			}
 		}
-		return -1;  // Card not found
+		return -1;
 	}
-	public void removeCardAt(int row, int col) {
+
+	/**
+	 *
+	 * @param row table
+	 * @param col column table
+	 */
+	public void removeCardAt(final int row, final int col) {
 		try {
 			ArrayList<Card> rowList = table.get(row);
 			if (col >= 0 && col < rowList.size()) {

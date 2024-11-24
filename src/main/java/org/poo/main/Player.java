@@ -6,9 +6,7 @@ import lombok.Setter;
 import java.util.ArrayList;
 @Getter
 public class Player {
-	private int id;
 	private ArrayList<Deck> decks;
-	private HeroCard hero;
 	@Getter @Setter
 	private int mana = 1;
 	private final int maxMana = 10;
